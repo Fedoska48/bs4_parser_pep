@@ -105,6 +105,24 @@ def download(session):
     logging.info(f'Архив был загружен и сохранён: {archive_path}')
 
 
+def get_data_peps_page(links_list):
+    status_full_page = []
+    for link in links_list:
+        status_full_page = []
+        session = requests_cache.CachedSession()
+        response = session.get(link)
+        response.encoding = 'utf-8'
+        soup = BeautifulSoup(response.text, features='lxml')
+        data_page = soup.find('dl',
+                              attrs={'class': 'rfc2822 field-list simple'})
+        status_page = data_page.find('abbr')
+        link_page = link.split('/')[-1]
+        status_full_page.append(
+            (link_page, status_page.text)
+        )
+    return status_full_page
+
+
 def pep(session):
     # session = requests_cache.CachedSession()
     # response = session.get(PEP_URL)
@@ -134,19 +152,7 @@ def pep(session):
             full_link = urljoin(PEP_URL, id)
             full_links.append(full_link)
     result_table = list(zip(ids, statuses))
-    status_full_page = []
-    for link in tqdm(full_links):
-        session = requests_cache.CachedSession()
-        response = session.get(link)
-        response.encoding = 'utf-8'
-        soup = BeautifulSoup(response.text, features='lxml')
-        data_page = soup.find('dl',
-                              attrs={'class': 'rfc2822 field-list simple'})
-        status_page = data_page.find('abbr')
-        link_page = link.split('/')[-1]
-        status_full_page.append(
-            (link_page, status_page.text)
-        )
+    status_full_page = get_data_peps_page(full_links)
     list_of_keys = [i[1] for i in status_full_page]
     result_page = [(i[0], i[1][:1]) for i in status_full_page]
     count = {key: 0 for key in list_of_keys}
