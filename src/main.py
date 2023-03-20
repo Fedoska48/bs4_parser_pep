@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 from configs import configure_argument_parser, configure_logging
-from constants import BASE_DIR, MAIN_DOC_URL, PEP_URL
+from constants import BASE_DIR, MAIN_DOC_URL, PEP_URL, LOG_DIR
 from outputs import control_output
 from utils import get_response, find_tag
 
@@ -180,7 +180,7 @@ MODE_TO_FUNCTION = {
 
 def main():
     # logs
-    configure_logging()
+    configure_logging(LOG_DIR)
     logging.info('Парсер запущен!')
 
     arg_parser = configure_argument_parser(MODE_TO_FUNCTION.keys())
