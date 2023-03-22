@@ -4,25 +4,27 @@ import logging
 
 from prettytable import PrettyTable
 
-from constants import BASE_DIR, DATETIME_FORMAT
+from constants import DATETIME_FORMAT, BASE_DIR
+
+# MESSAGES
+RESULT_FILE_MESSAGE = 'Файл с результатами был сохранён: {}'
 
 
 def control_output(results, cli_args):
-    output = cli_args.output
-    if output == 'pretty':
-        pretty_output(results)
-    elif output == 'file':
-        file_output(results, cli_args)
-    else:
-        default_output(results)
+    output_data = {
+        'pretty': pretty_output,
+        'file': file_output,
+        None: default_output
+    }
+    output_data[cli_args.output](results, cli_args)
 
 
-def default_output(results):
+def default_output(results, cli_args):
     for row in results:
         print(*row)
 
 
-def pretty_output(results):
+def pretty_output(results, cli_args):
     table = PrettyTable()
     table.field_names = results[0]
     table.align = 'l'
@@ -31,6 +33,7 @@ def pretty_output(results):
 
 
 def file_output(results, cli_args):
+    # Я понял про вынос в константы, но в данном случае это влияет на автотест
     results_dir = BASE_DIR / 'results'
     results_dir.mkdir(exist_ok=True)
     parse_mode = cli_args.mode
@@ -39,10 +42,8 @@ def file_output(results, cli_args):
     filename = f'{parse_mode}_{now_formatted}.csv'
     file_path = results_dir / filename
     with open(file_path, 'w', encoding='utf-8') as f:
-        # Создаём «объект записи» writer.
-        writer = csv.writer(f, dialect='unix')
-        # Передаём в метод writerows список с результатами парсинга.
+        writer = csv.writer(f, dialect=csv.unix_dialect)
         writer.writerows(results)
 
     # logs
-    logging.info(f'Файл с результатами был сохранён: {file_path}')
+    logging.info(RESULT_FILE_MESSAGE.format(file_path))

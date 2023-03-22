@@ -1,13 +1,11 @@
 # configs.py
-import datetime as dt
 import argparse
-
-from constants import (DATETIME_FORMAT, CONST_PRETTY, CONST_FILE, DT_FORMAT,
-                       LOG_FORMAT)
-
+import datetime as dt
 import logging
-
 from logging.handlers import RotatingFileHandler
+
+from constants import (CONST_FILE, CONST_PRETTY, DATETIME_FORMAT, DT_FORMAT,
+                       LOG_FORMAT)
 
 
 def configure_argument_parser(available_modes):
