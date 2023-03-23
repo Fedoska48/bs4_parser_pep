@@ -9,9 +9,8 @@ PEP_URL = 'https://peps.python.org/'
 
 # DIR
 BASE_DIR = Path(__file__).parent
-# DOWNLOADS_DIR = BASE_DIR / 'downloads'
 LOG_DIR = BASE_DIR / 'logs'
-# RESULTS_DIR = BASE_DIR / 'results'
+RESULTS_FOLDER = 'results'
 
 # FORMAT
 DATETIME_FORMAT = '%Y-%m-%d_%H-%M-%S'
@@ -19,8 +18,8 @@ DT_FORMAT = '%d.%m.%Y %H:%M:%S'
 LOG_FORMAT = '"%(asctime)s - [%(levelname)s] - %(message)s"'
 
 # NAME
-CONST_FILE = 'file'
-CONST_PRETTY = 'pretty'
+FILE_OUTPUT = 'file'
+PRETTY_OUTPUT = 'pretty'
 
 # DATA
 EXPECTED_STATUS = {

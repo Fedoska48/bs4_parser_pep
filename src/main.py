@@ -1,24 +1,25 @@
 # main.py
 import logging
 import re
+from collections import defaultdict
 from urllib.parse import urljoin
 
 import requests_cache
 from tqdm import tqdm
 
 from configs import configure_argument_parser, configure_logging
-from constants import (BASE_DIR, DOWNLOAD_URL, LOG_DIR, MAIN_DOC_URL, PEP_URL,
+from constants import (BASE_DIR, DOWNLOAD_URL, MAIN_DOC_URL, PEP_URL,
                        WHATS_NEW_URL)
-from exceptions import ParserFindTagException
+from exceptions import LatestVersionException
 from outputs import control_output
-from utils import (count_statuses, find_tag, get_data_peps_page, get_response,
-                   get_sections_by_selector, get_soup)
+from utils import find_tag, get_response, get_soup
 
 # MESSAGES
 DOWNLOAD_FINISHED_MESSAGE = 'Архив был загружен и сохранён: {}'
 EMPTY_RESULT_MESSAGE = 'Ничего не нашлось'
 EMPTY_RESPONSE_MESSAGE = 'Не был получен ответ по ссылке: {}'
 FINAL_MESSAGE = 'Сбой в работе программы: {}'
+DIFFERENCE_DATA = 'Статус {} отличается. Таблица: {} Страница: {}.'
 # parser main function messages:
 START_PARSER = 'Парсер запущен!'
 ARG_PARSER = 'Аргументы командной строки: {}'
@@ -28,40 +29,40 @@ FINISHED_PARSER = 'Парсер завершил работу.'
 def whats_new(session):
     """Получение нововведений версий Питона."""
     results = [('Ссылка на статью', 'Заголовок', 'Редактор, Автор')]
-    soup = get_soup(get_response(session, WHATS_NEW_URL))
-    selector = '#what-s-new-in-python div.toctree-wrapper li.toctree-l1'
-    sections = get_sections_by_selector(soup, selector)
+    logs = []
+    soup = get_soup(session, WHATS_NEW_URL)
+    sections = soup.select(
+        '#what-s-new-in-python div.toctree-wrapper li.toctree-l1 > a')
     for section in tqdm(sections):
-        version_a_tag = find_tag(section, 'a')
-        href = version_a_tag['href']
-        version_link = urljoin(WHATS_NEW_URL, href)
-        session = requests_cache.CachedSession()
-        response = get_response(session, version_link)
-        if response is None:
-            logging.warning(EMPTY_RESPONSE_MESSAGE.format(version_link))
-            continue
-        soup = get_soup(response)
-        results.append(
-            (
-                version_link,
-                find_tag(soup, 'h1').text,
-                find_tag(soup, 'dl').text.replace('\n', ' ')
+        try:
+            href = section['href']
+            version_link = urljoin(WHATS_NEW_URL, href)
+            soup = get_soup(session, version_link)
+            results.append(
+                (
+                    version_link,
+                    find_tag(soup, 'h1').text,
+                    find_tag(soup, 'dl').text.replace('\n', ' ')
+                )
             )
-        )
+        except ConnectionError:
+            logs.append(
+                logging.warning(EMPTY_RESPONSE_MESSAGE.format(version_link))
+            )
+    list(map(logging.warning, logs))
     return results
 
 
 def latest_versions(session):
     """Поиск документаций послежних версий Питона."""
-    soup = get_soup(get_response(session, MAIN_DOC_URL))
-    selector = 'div.sphinxsidebarwrapper ul'
-    ul_tags = get_sections_by_selector(soup, selector)
+    soup = get_soup(session, MAIN_DOC_URL)
+    ul_tags = soup.select('div.sphinxsidebarwrapper ul')
     for ul in ul_tags:
         if 'All versions' in ul.text:
             a_tags = ul.find_all('a')
             break
         else:
-            raise ParserFindTagException(EMPTY_RESULT_MESSAGE)
+            raise LatestVersionException(EMPTY_RESULT_MESSAGE)
     results = [('Ссылка на документацию', 'Версия', 'Статус')]
     pattern = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
     for a_tag in tqdm(a_tags):
@@ -79,7 +80,7 @@ def latest_versions(session):
 def download(session):
     """Скачивание архива с документацией"""
     downloads_dir = BASE_DIR / 'downloads'
-    soup = get_soup(get_response(session, DOWNLOAD_URL))
+    soup = get_soup(session, DOWNLOAD_URL)
     pdf_a4 = soup.select_one('table.docutils a[href$="pdf-a4.zip"]')['href']
     pdf_a4_link = urljoin(DOWNLOAD_URL, pdf_a4)
     filename = pdf_a4_link.split('/')[-1]
@@ -88,26 +89,45 @@ def download(session):
     response = session.get(pdf_a4_link)
     with open(archive_path, 'wb') as file:
         file.write(response.content)
-
-    # logs
     logging.info(DOWNLOAD_FINISHED_MESSAGE.format(archive_path))
 
 
 def pep(session):
     """Подсчет количество статусов PEP"""
-    soup = get_soup(get_response(session, PEP_URL))
+    logs = []
+    soup = get_soup(session, PEP_URL)
     data_table = soup.select('#numerical-index tbody > tr')
-    pep_data_table = {}  # pep_id: status_table
+    pep_data_table = {}
     for data in data_table:
         pep_id_table = find_tag(data, 'a')['href']
         status_table = find_tag(data, 'abbr')['title'].split()[1]
         pep_data_table[pep_id_table] = status_table
-    full_links_list = [urljoin(PEP_URL, i) for i in pep_data_table.keys()]
-    data_pages = get_data_peps_page(full_links_list)
+    links_list = [urljoin(PEP_URL, i) for i in pep_data_table.keys()]
+    pep_data_pages = {}
+    count = defaultdict(int)
+    for link in links_list:
+        try:
+            soup = get_soup(session, link)
+        except ConnectionError:
+            logs.append(EMPTY_RESPONSE_MESSAGE.format(link))
+            continue
+        status_page = soup.select_one('#pep-content abbr')
+        pep_id_page = link.split('/')[-1]
+        pep_data_pages[pep_id_page] = status_page.text
+        count[pep_data_pages[pep_id_page]] += 1
+        if pep_data_pages[pep_id_page] != pep_data_table[pep_id_page]:
+            logs.append(
+                logging.warning(DIFFERENCE_DATA.format(
+                    pep_id_page,
+                    pep_data_table[pep_id_page],
+                    pep_data_pages[pep_id_page])
+                )
+            )
+    list(map(logging.warning, logs))
     return [
         ('Статус', 'Количество'),
-        *count_statuses(pep_data_table, data_pages).items(),
-        ('Всего', sum(count_statuses(pep_data_table, data_pages).values())),
+        *count.items(),
+        ('Всего', sum(count.values())),
     ]
 
 
@@ -122,24 +142,19 @@ MODE_TO_FUNCTION = {
 def main():
     try:
         # logs
-        configure_logging(LOG_DIR)
+        configure_logging()
         logging.info(START_PARSER)
-
         arg_parser = configure_argument_parser(MODE_TO_FUNCTION.keys())
         args = arg_parser.parse_args()
-
         # logs
         logging.info(ARG_PARSER.format(args))
-
         session = requests_cache.CachedSession()
         if args.clear_cache:
             session.cache.clear()
-
         parser_mode = args.mode
         results = MODE_TO_FUNCTION[parser_mode](session)
         if results is not None:
             control_output(results, args)
-
         # logs
         logging.info(FINISHED_PARSER)
     except Exception as error:

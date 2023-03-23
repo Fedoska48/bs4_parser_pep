@@ -4,8 +4,8 @@ import datetime as dt
 import logging
 from logging.handlers import RotatingFileHandler
 
-from constants import (CONST_FILE, CONST_PRETTY, DATETIME_FORMAT, DT_FORMAT,
-                       LOG_FORMAT)
+from constants import (FILE_OUTPUT, PRETTY_OUTPUT, DATETIME_FORMAT, DT_FORMAT,
+                       LOG_FORMAT, LOG_DIR)
 
 
 def configure_argument_parser(available_modes):
@@ -24,13 +24,13 @@ def configure_argument_parser(available_modes):
     parser.add_argument(
         '-o',
         '--output',
-        choices=(CONST_PRETTY, CONST_FILE),
+        choices=(PRETTY_OUTPUT, FILE_OUTPUT),
         help='Дополнительные способы вывода данных'
     )
     return parser
 
 
-def configure_logging(log_dir):
+def configure_logging(log_dir=LOG_DIR):
     log_dir.mkdir(exist_ok=True)
     now = dt.datetime.now()
     now_formatted = now.strftime(DATETIME_FORMAT)

@@ -4,19 +4,10 @@ import logging
 
 from prettytable import PrettyTable
 
-from constants import DATETIME_FORMAT, BASE_DIR
+from constants import DATETIME_FORMAT, BASE_DIR, RESULTS_FOLDER
 
 # MESSAGES
 RESULT_FILE_MESSAGE = 'Файл с результатами был сохранён: {}'
-
-
-def control_output(results, cli_args):
-    output_data = {
-        'pretty': pretty_output,
-        'file': file_output,
-        None: default_output
-    }
-    output_data[cli_args.output](results, cli_args)
 
 
 def default_output(results, cli_args):
@@ -33,8 +24,7 @@ def pretty_output(results, cli_args):
 
 
 def file_output(results, cli_args):
-    # Я понял про вынос в константы, но в данном случае это влияет на автотест
-    results_dir = BASE_DIR / 'results'
+    results_dir = BASE_DIR / RESULTS_FOLDER
     results_dir.mkdir(exist_ok=True)
     parse_mode = cli_args.mode
     now = dt.datetime.now()
@@ -42,8 +32,17 @@ def file_output(results, cli_args):
     filename = f'{parse_mode}_{now_formatted}.csv'
     file_path = results_dir / filename
     with open(file_path, 'w', encoding='utf-8') as f:
-        writer = csv.writer(f, dialect=csv.unix_dialect)
-        writer.writerows(results)
-
+        csv.writer(f, dialect=csv.unix_dialect).writerows(results)
     # logs
     logging.info(RESULT_FILE_MESSAGE.format(file_path))
+
+
+OUTPUT_DATA = {
+    'pretty': pretty_output,
+    'file': file_output,
+    None: default_output
+}
+
+
+def control_output(results, cli_args):
+    OUTPUT_DATA[cli_args.output](results, cli_args)
