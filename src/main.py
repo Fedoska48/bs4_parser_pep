@@ -12,7 +12,7 @@ from constants import (BASE_DIR, DOWNLOAD_URL, MAIN_DOC_URL, PEP_URL,
                        WHATS_NEW_URL)
 from exceptions import LatestVersionException
 from outputs import control_output
-from utils import find_tag, get_response, get_soup
+from utils import find_tag, get_soup
 
 # MESSAGES
 DOWNLOAD_FINISHED_MESSAGE = 'Архив был загружен и сохранён: {}'
