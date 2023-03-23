@@ -8,7 +8,7 @@ Python 3.9, BeautifulSoup4
 
 Никита Сергеевич Федяев
 
-Telegram: [@nsfed](t.me/nsfed)
+Telegram: [@nsfed](https://t.me/nsfed)
 
 ### Режимы работы парсера:
 
