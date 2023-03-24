@@ -8,8 +8,9 @@ import requests_cache
 from tqdm import tqdm
 
 from configs import configure_argument_parser, configure_logging
-from constants import (BASE_DIR, DOWNLOAD_URL, MAIN_DOC_URL, PEP_URL,
-                       WHATS_NEW_URL)
+from constants import (
+    BASE_DIR, DOWNLOAD_URL, MAIN_DOC_URL, PEP_URL, WHATS_NEW_URL
+)
 from exceptions import LatestVersionException
 from outputs import control_output
 from utils import find_tag, get_soup
@@ -30,12 +31,11 @@ def whats_new(session):
     """Получение нововведений версий Питона."""
     results = [('Ссылка на статью', 'Заголовок', 'Редактор, Автор')]
     logs = []
-    soup = get_soup(session, WHATS_NEW_URL)
-    sections = soup.select(
-        '#what-s-new-in-python div.toctree-wrapper li.toctree-l1 > a')
-    for section in tqdm(sections):
+    for row in tqdm(get_soup(session, WHATS_NEW_URL).select(
+            '#what-s-new-in-python div.toctree-wrapper li.toctree-l1 > a')
+    ):
         try:
-            href = section['href']
+            href = row['href']
             version_link = urljoin(WHATS_NEW_URL, href)
             soup = get_soup(session, version_link)
             results.append(
@@ -47,7 +47,7 @@ def whats_new(session):
             )
         except ConnectionError:
             logs.append(
-                logging.warning(EMPTY_RESPONSE_MESSAGE.format(version_link))
+                EMPTY_RESPONSE_MESSAGE.format(version_link)
             )
     list(map(logging.warning, logs))
     return results
@@ -55,9 +55,9 @@ def whats_new(session):
 
 def latest_versions(session):
     """Поиск документаций послежних версий Питона."""
-    soup = get_soup(session, MAIN_DOC_URL)
-    ul_tags = soup.select('div.sphinxsidebarwrapper ul')
-    for ul in ul_tags:
+    for ul in get_soup(session, MAIN_DOC_URL).select(
+            'div.sphinxsidebarwrapper ul'
+    ):
         if 'All versions' in ul.text:
             a_tags = ul.find_all('a')
             break
@@ -80,9 +80,10 @@ def latest_versions(session):
 def download(session):
     """Скачивание архива с документацией"""
     downloads_dir = BASE_DIR / 'downloads'
-    soup = get_soup(session, DOWNLOAD_URL)
-    pdf_a4 = soup.select_one('table.docutils a[href$="pdf-a4.zip"]')['href']
-    pdf_a4_link = urljoin(DOWNLOAD_URL, pdf_a4)
+    pdf_a4_link = urljoin(DOWNLOAD_URL,
+                          get_soup(session, DOWNLOAD_URL).select_one(
+                              'table.docutils a[href$="pdf-a4.zip"]')['href']
+                          )
     filename = pdf_a4_link.split('/')[-1]
     downloads_dir.mkdir(exist_ok=True)
     archive_path = downloads_dir / filename
@@ -95,26 +96,27 @@ def download(session):
 def pep(session):
     """Подсчет количество статусов PEP"""
     logs = []
-    soup = get_soup(session, PEP_URL)
-    data_table = soup.select('#numerical-index tbody > tr')
     pep_data_table = {}
-    for data in data_table:
+    for data in get_soup(session, PEP_URL).select(
+            '#numerical-index tbody > tr'
+    ):
         pep_id_table = find_tag(data, 'a')['href']
         status_table = find_tag(data, 'abbr')['title'].split()[1]
         pep_data_table[pep_id_table] = status_table
     links_list = [urljoin(PEP_URL, i) for i in pep_data_table.keys()]
     pep_data_pages = {}
-    count = defaultdict(int)
+    count_statuses = defaultdict(int)
     for link in links_list:
         try:
-            soup = get_soup(session, link)
+            status_page = get_soup(session, link).select_one(
+                '#pep-content abbr'
+            )
         except ConnectionError:
             logs.append(EMPTY_RESPONSE_MESSAGE.format(link))
             continue
-        status_page = soup.select_one('#pep-content abbr')
         pep_id_page = link.split('/')[-1]
         pep_data_pages[pep_id_page] = status_page.text
-        count[pep_data_pages[pep_id_page]] += 1
+        count_statuses[pep_data_pages[pep_id_page]] += 1
         if pep_data_pages[pep_id_page] != pep_data_table[pep_id_page]:
             logs.append(
                 logging.warning(DIFFERENCE_DATA.format(
@@ -126,8 +128,8 @@ def pep(session):
     list(map(logging.warning, logs))
     return [
         ('Статус', 'Количество'),
-        *count.items(),
-        ('Всего', sum(count.values())),
+        *count_statuses.items(),
+        ('Всего', sum(count_statuses.values())),
     ]
 
 

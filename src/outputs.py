@@ -32,7 +32,11 @@ def file_output(results, cli_args):
     filename = f'{parse_mode}_{now_formatted}.csv'
     file_path = results_dir / filename
     with open(file_path, 'w', encoding='utf-8') as f:
-        csv.writer(f, dialect=csv.unix_dialect).writerows(results)
+        csv.writer(
+            f, dialect=csv.unix_dialect
+        ).writerows(
+            results
+        )
     # logs
     logging.info(RESULT_FILE_MESSAGE.format(file_path))
 

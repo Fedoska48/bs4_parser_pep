@@ -1,4 +1,5 @@
 # utils.py
+from requests import RequestException
 from bs4 import BeautifulSoup
 
 from exceptions import ParserFindTagException
@@ -14,9 +15,9 @@ def get_response(session, url, encoding='utf-8'):
         response = session.get(url)
         response.encoding = encoding
         return response
-    except ConnectionError:
-        raise ConnectionError(
-            REQUEST_EXCEPTION.format(url),
+    except RequestException:
+        raise RequestException(
+            REQUEST_EXCEPTION.format(url)
         )
 
 
