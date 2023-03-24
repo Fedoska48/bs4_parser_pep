@@ -31,11 +31,15 @@ def whats_new(session):
     """Получение нововведений версий Питона."""
     results = [('Ссылка на статью', 'Заголовок', 'Редактор, Автор')]
     logs = []
-    for row in tqdm(get_soup(session, WHATS_NEW_URL).select(
-            '#what-s-new-in-python div.toctree-wrapper li.toctree-l1 > a')
+    for anchor in tqdm(
+            get_soup(
+                session, WHATS_NEW_URL
+            ).select(
+                '#what-s-new-in-python div.toctree-wrapper li.toctree-l1 > a'
+            )
     ):
         try:
-            href = row['href']
+            href = anchor['href']
             version_link = urljoin(WHATS_NEW_URL, href)
             soup = get_soup(session, version_link)
             results.append(
@@ -46,17 +50,19 @@ def whats_new(session):
                 )
             )
         except ConnectionError:
-            logs.append(
+            raise ConnectionError(logs.append(
                 EMPTY_RESPONSE_MESSAGE.format(version_link)
-            )
+            ))
     list(map(logging.warning, logs))
     return results
 
 
 def latest_versions(session):
     """Поиск документаций послежних версий Питона."""
-    for ul in get_soup(session, MAIN_DOC_URL).select(
-            'div.sphinxsidebarwrapper ul'
+    for ul in get_soup(
+            session, MAIN_DOC_URL
+    ).select(
+        'div.sphinxsidebarwrapper ul'
     ):
         if 'All versions' in ul.text:
             a_tags = ul.find_all('a')
@@ -80,10 +86,13 @@ def latest_versions(session):
 def download(session):
     """Скачивание архива с документацией"""
     downloads_dir = BASE_DIR / 'downloads'
-    pdf_a4_link = urljoin(DOWNLOAD_URL,
-                          get_soup(session, DOWNLOAD_URL).select_one(
-                              'table.docutils a[href$="pdf-a4.zip"]')['href']
-                          )
+    pdf_a4_link = urljoin(
+        DOWNLOAD_URL, get_soup(
+            session, DOWNLOAD_URL
+        ).select_one(
+            'table.docutils a[href$="pdf-a4.zip"]'
+        )['href']
+    )
     filename = pdf_a4_link.split('/')[-1]
     downloads_dir.mkdir(exist_ok=True)
     archive_path = downloads_dir / filename
@@ -97,8 +106,10 @@ def pep(session):
     """Подсчет количество статусов PEP"""
     logs = []
     pep_data_table = {}
-    for data in get_soup(session, PEP_URL).select(
-            '#numerical-index tbody > tr'
+    for data in get_soup(
+            session, PEP_URL
+    ).select(
+        '#numerical-index tbody > tr'
     ):
         pep_id_table = find_tag(data, 'a')['href']
         status_table = find_tag(data, 'abbr')['title'].split()[1]
@@ -112,7 +123,9 @@ def pep(session):
                 '#pep-content abbr'
             )
         except ConnectionError:
-            logs.append(EMPTY_RESPONSE_MESSAGE.format(link))
+            raise ConnectionError(
+                logs.append(EMPTY_RESPONSE_MESSAGE.format(link))
+            )
             continue
         pep_id_page = link.split('/')[-1]
         pep_data_pages[pep_id_page] = status_page.text
