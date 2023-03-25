@@ -32,11 +32,11 @@ def whats_new(session):
     results = [('Ссылка на статью', 'Заголовок', 'Редактор, Автор')]
     logs = []
     for anchor in tqdm(
-            get_soup(
+        get_soup(
                 session, WHATS_NEW_URL
             ).select(
                 '#what-s-new-in-python div.toctree-wrapper li.toctree-l1 > a'
-            )
+        )[:3]
     ):
         try:
             href = anchor['href']
@@ -49,10 +49,11 @@ def whats_new(session):
                     find_tag(soup, 'dl').text.replace('\n', ' ')
                 )
             )
-        except ConnectionError:
+        except ConnectionError as error:
             logs.append(
-                EMPTY_RESPONSE_MESSAGE.format(ConnectionError, version_link)
+                EMPTY_RESPONSE_MESSAGE.format(error.strerror, version_link)
             )
+        print(anchor)
     list(map(logging.warning, logs))
     return results
 
@@ -117,13 +118,14 @@ def pep(session):
     links_list = [urljoin(PEP_URL, i) for i in pep_data_table.keys()]
     pep_data_pages = {}
     count_statuses = defaultdict(int)
-    for link in links_list:
+    for link in links_list[:3]:
         try:
             status_page = get_soup(session, link).select_one(
                 '#pep-content abbr'
             )
-        except ConnectionError:
-            logs.append(EMPTY_RESPONSE_MESSAGE.format(ConnectionError, link))
+        except ConnectionError as error:
+            logs.append(EMPTY_RESPONSE_MESSAGE.format(error.strerror, link))
+            continue
         pep_id_page = link.split('/')[-1]
         pep_data_pages[pep_id_page] = status_page.text
         count_statuses[pep_data_pages[pep_id_page]] += 1
