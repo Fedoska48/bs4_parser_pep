@@ -16,9 +16,7 @@ def get_response(session, url, encoding='utf-8'):
         response.encoding = encoding
         return response
     except RequestException:
-        raise ConnectionError(
-            REQUEST_EXCEPTION.format(url)
-        )
+        raise ConnectionError(REQUEST_EXCEPTION.format(url))
 
 
 def find_tag(soup, tag, attrs=None):
