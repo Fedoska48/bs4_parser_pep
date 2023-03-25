@@ -36,7 +36,7 @@ def whats_new(session):
                 session, WHATS_NEW_URL
             ).select(
                 '#what-s-new-in-python div.toctree-wrapper li.toctree-l1 > a'
-        )[:3]
+        )
     ):
         try:
             href = anchor['href']
@@ -118,7 +118,7 @@ def pep(session):
     links_list = [urljoin(PEP_URL, i) for i in pep_data_table.keys()]
     pep_data_pages = {}
     count_statuses = defaultdict(int)
-    for link in links_list[:3]:
+    for link in links_list:
         try:
             status_page = get_soup(session, link).select_one(
                 '#pep-content abbr'
